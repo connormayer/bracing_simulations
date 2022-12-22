@@ -1,11 +1,10 @@
 library(tidyverse)
 library(lme4)
-library(ggbiplot)
 
 setwd("E:/git_repos/bracing_simulations/")
 
 five_data_folder <- "E:/git_repos/bracing_simulations/data/sim3_12_19"
-ten_data_folder <- "E:/git_repos/bracing_simulations/data/sim4_12_20"
+ten_data_folder <- "E:/git_repos/bracing_simulations/data/sim5_12_22"
 
 contacts_df <- tibble()
 excitation_df <- tibble()
