@@ -2,10 +2,11 @@ library(tidyverse)
 library(lme4)
 library(ggbiplot)
 
-setwd("E:/git_repos/bracing_simulations/")
+setwd("C:/Users/conno/git_repos/bracing_simulations")
+#setwd("E:/git_repos/bracing_simulations/")
 
-five_data_folder <- "E:/git_repos/bracing_simulations/data/sim3_12_19"
-ten_data_folder <- "E:/git_repos/bracing_simulations/data/sim4_12_20"
+five_data_folder <- "data/sim3_12_19"
+ten_data_folder <- "data/sim4_12_20"
 
 contacts_df <- tibble()
 excitation_df <- tibble()
@@ -176,8 +177,11 @@ activation_df_stats <- success_df %>%
   ) %>%
   select(condition, contact, bracing, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL)
 
-m <- glm(bracing ~ (GGP + GGM + GGA + STY + MH + HG + TRANS + VERT + SL + IL) * condition, data = activation_df_stats, family = 'binomial')
-summary(m)
+activation_df_stats$condition <- factor(activation_df_stats$condition, levels=c("5mm", "10mm"))
+m1 <- glm(bracing ~ GGP + GGM + GGA + STY + MH + HG + TRANS + VERT + SL + IL + condition, data = activation_df_stats, family = 'binomial')
+summary(m1)
+m2 <- glm(bracing ~ (GGP + GGM + GGA + STY + MH + HG + TRANS + VERT + SL + IL) * condition, data = activation_df_stats, family = 'binomial')
+summary(m2)
 
 # Check if there were 10mm successes that weren't 5mm successes
 five_contacts <- contacts %>% filter(condition == '5mm')
