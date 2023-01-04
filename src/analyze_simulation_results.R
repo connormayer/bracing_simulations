@@ -6,7 +6,7 @@ setwd("E:/git_repos/bracing_simulations/")
 
 
 five_data_folder <- "data/sim3_12_19"
-ten_data_folder <- "data/sim4_12_20"
+ten_data_folder <- "data/sim5_12_22"
 
 contacts_df <- tibble()
 excitation_df <- tibble()
@@ -65,6 +65,11 @@ mean_activations <- bracing %>%
   group_by(condition) %>%
   summarise(across(c(GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL), mean, na.rm=TRUE))
 
+mean_contacts <- bracing %>%
+  select(condition, front, mid, back, lat_left, lat_right, coronal) %>%
+  group_by(condition) %>%
+  summarise(across(c(front, mid, back, lat_left, lat_right, coronal), mean, na.rm=TRUE))
+
 sd_activations <- bracing %>%
   select(condition, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL) %>%
   group_by(condition) %>%
@@ -76,6 +81,8 @@ pivot_sd <- sd_activations %>%
   pivot_longer(-condition, names_to="muscle", values_to="sd")
 
 pivot_data <- inner_join(pivot_mean, pivot_sd, by=c("condition", "muscle"))
+pivot_data <- pivot_data %>%
+  mutate(type=ifelse(muscle %in% c("GGP", "GGM", "MH", "VERT", "SL"), 'Bracing Agonist', 'Bracing Antagonist'))
 
 print("Successful sims")
 print(success_df %>% group_by(condition) %>% count())
@@ -89,99 +96,31 @@ print(bracing %>% group_by(condition) %>% count())
 print("Mean activations")
 print(mean_activations)
 
-# Visualization
+print("Mean contacts")
+print(mean_contacts)
 
-# Dimensionality-reduced plot
-activation_df <- success_df %>%
-  mutate(
-    contact = ifelse(front > 0 | mid > 0 | back > 0 | lat_left > 0 | lat_right > 0 | coronal > 0, 'contact', 'no contact'),
-    bracing = ifelse(lat_left > 0 & lat_right > 0, 'bracing', 'no bracing'),
-    group = str_c(contact, bracing, sep = ' & ')
-  ) %>%
-  select(condition, contact, bracing, group, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL)
+# Compare activation by bracer/non-bracer category
+cat_data <- bracing %>%
+  select(condition, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL)
 
-activation_five <- activation_df %>% filter(condition == '5mm')
-activation_ten <- activation_df %>% filter(condition == '10mm')
+cat_pivot <- cat_data %>%
+  pivot_longer(-condition, names_to="muscle", values_to="activation") %>%
+  mutate(type=ifelse(muscle %in% c("GGP", "GGM", "MH", "VERT", "SL"), 'agonist', 'antagonist'))
 
-pc_five <- activation_five %>%
-  select(-condition, -group, -contact, -bracing) %>%
-  prcomp(center=TRUE, scale. = TRUE)
+print("Mean activation across conditions by agonist/antagonist")
+cat_pivot %>% group_by(condition, type) %>% summarize(mean=mean(activation))
 
-pc_ten <- activation_ten %>%
-  select(-condition, -group, -contact, -bracing) %>%
-  prcomp(center=TRUE, scale. = TRUE)
-
-plot_five <- ggbiplot(pc_five, obs.scale = 1, var.scale = 1,
-                      groups = activation_five$group) +
-  labs(title="5mm jaw aperture")
-plot_five$layers <- c(plot_five$layers, plot_five$layers[[1]])
-ggsave("images/5mm_pca.png", plot=plot_five)
-
-plot_ten <- ggbiplot(pc_ten, obs.scale = 1, var.scale = 1,
-                     groups = activation_ten$group) +
-  labs(title="10mm jaw aperture")
-plot_ten$layers <- c(plot_ten$layers, plot_ten$layers[[1]])
-ggsave("images/10mm_pca.png", plot=plot_ten)
-
-activation_five <- activation_df %>% filter(condition == '5mm' & contact == 'contact')
-activation_ten <- activation_df %>% filter(condition == '10mm' & contact == 'contact')
-
-pc_five <- activation_five %>%
-  select(-condition, -group, -contact, -bracing) %>%
-  prcomp(center=TRUE, scale. = TRUE)
-
-pc_ten <- activation_ten %>%
-  select(-condition, -group, -contact, -bracing, -HG) %>%
-  prcomp(center=TRUE, scale. = TRUE)
-
-plot_five <- ggbiplot(pc_five, obs.scale = 1, var.scale = 1,
-                      groups = activation_five$group) +
-  labs(title="5mm jaw aperture")
-plot_five$layers <- c(plot_five$layers, plot_five$layers[[1]])
-ggsave("images/5mm_pca_contact.png", plot=plot_five)
-
-plot_ten <- ggbiplot(pc_ten, obs.scale = 1, var.scale = 1,
-                     groups = activation_ten$group) +
-  labs(title="10mm jaw aperture")
-plot_ten$layers <- c(plot_ten$layers, plot_ten$layers[[1]])
-ggsave("images/10mm_pca_contact.png", plot=plot_ten)
-
-# Histogram of activation level counts
-
-activation_df %>%
-  filter(bracing == 'bracing') %>%
-  mutate(condition = factor(condition, levels = c("5mm", "10mm"))) %>%
-  gather(key, value, -condition, -contact, -bracing, -group) %>%
-  ggplot(aes(x=value, fill=condition)) +
-  geom_bar(aes(y=..prop..), position=position_dodge(preserve = "single")) +
-  facet_wrap(~key, nrow=2) +
-  xlab("Activation level") +
-  ylab("Proportion of bracing outcomes")
-ggsave("images/activation_histogram.png")
-
-# Barplot of mean levels
-
-pivot_data %>%
-  mutate(condition = factor(condition, levels = c("5mm", "10mm"))) %>%
-  ggplot(aes(x=muscle, y=mean, fill=condition)) +
-  geom_bar(position=position_dodge(preserve = "single"), stat='identity') +
-  xlab("Muscle") +
-  ylab("Mean activation level")
-ggsave("images/activation_barplot.png")
-
-# Stats?
+# Stats
 activation_df_stats <- success_df %>%
   mutate(
     contact = front > 0 | mid > 0 | back > 0 | lat_left > 0 | lat_right > 0 | coronal > 0, 'contact', 'no contact',
     bracing = lat_left > 0 & lat_right > 0, 'bracing', 'no bracing'
   ) %>%
-  select(condition, contact, bracing, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL)
+  select(condition, contact, bracing, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL) 
 
 activation_df_stats$condition <- factor(activation_df_stats$condition, levels=c("5mm", "10mm"))
-m1 <- glm(bracing ~ GGP + GGM + GGA + STY + MH + HG + TRANS + VERT + SL + IL + condition, data = activation_df_stats, family = 'binomial')
-summary(m1)
-m2 <- glm(bracing ~ (GGP + GGM + GGA + STY + MH + HG + TRANS + VERT + SL + IL) * condition, data = activation_df_stats, family = 'binomial')
-summary(m2)
+m <- glm(bracing ~ (GGP + GGM + GGA + STY + MH + HG + TRANS + VERT + SL + IL) * condition, data = activation_df_stats, family = 'binomial')
+summary(m)
 
 # Check if there were 10mm successes that weren't 5mm successes
 five_contacts <- contacts %>% filter(condition == '5mm')
@@ -199,3 +138,42 @@ print(nrow(ten_bracing))
 # Check mean activation level across both conditions
 mean(as.matrix(five_bracing[,9:18]))
 mean(as.matrix(ten_bracing[,9:18]))
+
+# Visualization
+
+# Histogram of activation level counts
+
+activation_df <- success_df %>%
+  mutate(
+    contact = ifelse(front > 0 | mid > 0 | back > 0 | lat_left > 0 | lat_right > 0 | coronal > 0, 'contact', 'no contact'),
+    bracing = ifelse(lat_left > 0 & lat_right > 0, 'bracing', 'no bracing'),
+    group = str_c(contact, bracing, sep = ' & ')
+  ) %>%
+  select(condition, contact, bracing, group, GGP, GGM, GGA, STY, MH, HG, TRANS, VERT, SL, IL)
+
+activation_df %>%
+  filter(bracing == 'bracing') %>%
+  mutate(condition = factor(condition, levels = c("5mm", "10mm"))) %>%
+  gather(key, value, -condition, -contact, -bracing, -group) %>%
+  ggplot(aes(x=value, fill=condition)) +
+  geom_bar(aes(y=..prop..), position=position_dodge(preserve = "single")) +
+  facet_wrap(~key, nrow=2) +
+  xlab("Activation level") +
+  ylab("Proportion of bracing outcomes")
+ggsave("images/activation_histogram.png")
+
+# Barplot of mean levels
+
+pivot_data %>%
+  mutate(condition = factor(condition, levels = c("5mm", "10mm"))) %>%
+  ggplot(aes(x=factor(muscle, 
+                      levels = c("HG", "TRANS", "STY", "GGA", "IL", "VERT", "GGM", "MH", "SL", "GGP")), 
+             y=mean, fill=condition)) +
+  geom_bar(position=position_dodge(preserve = "single"), stat='identity') +
+  xlab("Muscle") +
+  ylab("Mean activation level for bilateral bracing outcomes") + 
+  scale_fill_discrete(name = "Jaw Opening") +
+  facet_grid(~ type, scale='free') + 
+  theme(text = element_text(size=20))
+ggsave("images/activation_barplot.png")
+
