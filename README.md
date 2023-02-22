@@ -8,4 +8,4 @@ This repository contains the results and analysis for Study 3 in Liu et al. (res
 For the code used to run the simulations, visit [this repository](https://github.com/connormayer/artisynth_models/tree/bracing).
 ## Citation:
 
-Liu, Y., Luo, S., Łuszczuk, M., Mayer, C., de Boer, G., Shamei, A., & Gick, B. (resubmitted). Robustness of lateral tongue bracing under bite block perturbation.
+Liu, Y., Luo, S., Łuszczuk, M., Mayer, C., Shamei, A., de Boer, G., & Gick, B. (resubmitted). Robustness of lateral tongue bracing under bite block perturbation.
